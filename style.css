@@ -190,7 +190,6 @@ canvas {
     color: var(--text-secondary);
     font-size: 14px;
     margin: 0;
-    animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -367,8 +366,9 @@ canvas {
         max-width: 100vw;
         box-sizing: border-box;
         border-radius: 0;
-        background: rgba(12, 16, 30, 0.5);
-        backdrop-filter: blur(24px);
+        background: rgba(12, 16, 30, 0.85);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
         border: none;
         box-shadow: none;
     }
@@ -600,5 +600,20 @@ canvas {
 
     #go-highscore-list table {
         font-size: 10px;
+    }
+
+    /* --- バッテリー節約: モバイルでGPU負荷の高いエフェクトを無効化 --- */
+    .glass-panel {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    }
+
+    .board-wrapper {
+        box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .btn-ctrl {
+        box-shadow: none !important;
     }
 }

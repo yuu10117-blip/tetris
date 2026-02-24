@@ -679,7 +679,7 @@ function draw() {
 }
 
 // ゲームループ
-const TARGET_FPS = 30; // 30fpsに制限（バッテリー節約）
+const TARGET_FPS = 20; // 20fpsに制限（バッテリー節約、テトリスには十分）
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 let animFrameId = null;
 
