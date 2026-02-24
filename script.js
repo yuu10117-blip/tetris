@@ -679,14 +679,27 @@ function draw() {
 }
 
 // ゲームループ
+const TARGET_FPS = 30; // 30fpsに制限（バッテリー節約）
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
+let animFrameId = null;
+
 function update(time = 0) {
     if (isPaused || isGameOver) {
-        lastTime = time;
-        requestAnimationFrame(update);
+        // ポーズ/ゲームオーバー中は描画を停止（バッテリー節約）
+        lastTime = 0;
+        animFrameId = null;
         return;
     }
 
+    animFrameId = requestAnimationFrame(update);
+
+    // FPS制限: 前フレームから十分な時間が経過していなければスキップ
+    if (lastTime === 0) {
+        lastTime = time;
+        return;
+    }
     const deltaTime = time - lastTime;
+    if (deltaTime < FRAME_INTERVAL) return;
     lastTime = time;
 
     // 固定エフェクトのタイマー更新
@@ -717,8 +730,31 @@ function update(time = 0) {
     }
 
     draw();
-    requestAnimationFrame(update);
 }
+
+// ゲームループを再開する関数（ポーズ解除・リスタート時に使用）
+function resumeGameLoop() {
+    if (!animFrameId && !isPaused && !isGameOver) {
+        lastTime = 0;
+        animFrameId = requestAnimationFrame(update);
+    }
+}
+
+// --- Page Visibility API（タブ切替でゲームを自動停止） ---
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // タブが非表示 → ループ停止・BGM一時停止
+        if (animFrameId) {
+            cancelAnimationFrame(animFrameId);
+            animFrameId = null;
+        }
+        pauseBgm();
+    } else {
+        // タブが再表示 → ループ再開・BGM再開
+        resumeGameLoop();
+        resumeBgm();
+    }
+});
 
 // --- ゲームリスタート ---
 function restartGame() {
@@ -736,6 +772,8 @@ function restartGame() {
     currentPiece = popNextPiece();
     // BGMが以前再生中だった場合は再開
     resumeBgm();
+    // ゲームループを再開
+    resumeGameLoop();
 }
 
 // キーボード操作の受付
@@ -755,6 +793,7 @@ document.addEventListener('keydown', event => {
         } else {
             overlay.classList.add('hidden');
             resumeBgm();
+            resumeGameLoop();
         }
         return;
     }
@@ -882,6 +921,7 @@ if (btnLeft) {
         } else {
             overlay.classList.add('hidden');
             resumeBgm();
+            resumeGameLoop();
         }
     });
 }
