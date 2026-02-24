@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Modern Tetris</title>
+    <script>
+        document.write('<link rel="stylesheet" href="style.css?v=' + new Date().getTime() + '">');
+    </script>
+</head>
+
+<body>
+    <div class="game-container">
+        <!-- 左側：ステータスパネル（PC用） -->
+        <div class="info-panel left-panel">
+            <div class="info-box">
+                <div class="info-title">NEXT</div>
+                <canvas id="next-board" width="120" height="120"></canvas>
+            </div>
+            <div class="info-box">
+                <div class="info-title">LEVEL</div>
+                <div class="info-value" id="level">1</div>
+            </div>
+            <div class="info-box">
+                <div class="info-title">SCORE</div>
+                <div class="info-value" id="score">0</div>
+            </div>
+        </div>
+
+        <!-- 中央：ゲームボード -->
+        <div class="board-wrapper" style="position: relative;">
+            <canvas id="tetris-board" width="300" height="600"></canvas>
+            <div id="pause-overlay" class="overlay hidden">
+                <h2>PAUSED</h2>
+                <p>Press 'P' to Resume</p>
+            </div>
+            <div id="game-over-overlay" class="overlay hidden">
+                <h2>GAME OVER</h2>
+                <div id="go-score-display"></div>
+                <div id="go-highscore-list"></div>
+                <div id="go-name-input-area" class="hidden">
+                    <p class="go-label" id="go-new-high-label">NEW HIGH SCORE!</p>
+                    <input type="text" id="go-name-input" maxlength="8" placeholder="NAME">
+                    <button id="go-name-ok" class="btn-ctrl go-ok-btn">OK</button>
+                </div>
+                <p id="go-restart-msg">TAP or SPACE to Restart</p>
+                <button id="btn-retry" class="btn-ctrl btn-retry">RETRY</button>
+            </div>
+        </div>
+
+        <!-- 右側：操作説明（PC用） -->
+        <div class="info-panel right-panel">
+            <div class="controls-help">
+                <p>← → : 移動</p>
+                <p>↑ : 回転</p>
+                <p>↓ : 速く落とす</p>
+                <p>Space : 一気に落とす</p>
+                <br>
+                <p>P : ポーズ</p>
+            </div>
+
+            <!-- モバイル操作用コントロール群 -->
+            <div class="mobile-controls">
+                <!-- メインのゲームエリア: 左にステータス -->
+                <div class="mobile-game-area">
+                    <div class="mobile-sidebar">
+                        <div class="info-box mobile-next-box">
+                            <div class="info-title">NEXT</div>
+                            <canvas id="next-board-mobile-1" width="55" height="55"></canvas>
+                            <canvas id="next-board-mobile-2" width="45" height="45"></canvas>
+                            <canvas id="next-board-mobile-3" width="45" height="45"></canvas>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-title">LV</div>
+                            <div class="info-value" id="level-mobile">1</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-title">SCORE</div>
+                            <div class="info-value" id="score-mobile">0</div>
+                        </div>
+                        <button id="btn-pause" class="btn-ctrl btn-pause-sidebar">⏸</button>
+                        <button id="btn-bgm" class="btn-ctrl btn-bgm-sidebar">🔇</button>
+                    </div>
+                </div>
+
+                <!-- 操作ボタン: 回転 DROP ◀ ▶ -->
+                <div class="mobile-ctrl-row">
+                    <button id="btn-up" class="btn-ctrl btn-rotate">↻</button>
+                    <button id="btn-space" class="btn-ctrl btn-drop">DROP</button>
+                    <button id="btn-left" class="btn-ctrl btn-move">◀</button>
+                    <button id="btn-right" class="btn-ctrl btn-move">▶</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.write('<scr' + 'ipt src="script.js?v=' + new Date().getTime() + '"><\/scr' + 'ipt>');
+    </script>
+</body>
+
+</html>
