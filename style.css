@@ -397,13 +397,6 @@ canvas {
         grid-area: board;
         justify-self: start;
         border-radius: 14px;
-        max-height: 50vh;
-        overflow: hidden;
-    }
-
-    .board-wrapper canvas {
-        max-height: 50vh;
-        width: auto;
     }
 
     .mobile-ctrl-row {
