@@ -726,15 +726,19 @@ function arenaSweep(multiplier = 1, isTSpin = false, hasBomb = false) {
         }
     }
 
-    // 消去対象の行を実際に消去
+    // 消去対象の行を実際に消去（spliceを先にすべて行い、最後にまとめてunshift）
     let rowCount = 0;
     if (rowsToRemove.size > 0) {
         const sortedRows = Array.from(rowsToRemove).sort((a, b) => b - a);
+        // 下から順にsplice（上の行のインデックスは変わらない）
         sortedRows.forEach(y => {
             board.splice(y, 1);
-            board.unshift(Array(COLS).fill(0));
-            rowCount++;
         });
+        rowCount = sortedRows.length;
+        // 削除した分の空行をまとめて上に追加
+        for (let i = 0; i < rowCount; i++) {
+            board.unshift(Array(COLS).fill(0));
+        }
     }
 
     // T-Spinの「難しい」消去かどうか判定
