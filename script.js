@@ -14,8 +14,8 @@ const nextMobileCtxs = nextMobileCanvases.map(c => c ? c.getContext('2d') : null
 // 1マスのサイズ（px）
 const BLOCK_SIZE = 24;
 // 盤面のサイズ（行、列）
-const ROWS = 24;
-const COLS = 12;
+const ROWS = 23;
+const COLS = 11;
 
 // キャンバスのサイズを調整してスケールを設定
 ctx.scale(BLOCK_SIZE, BLOCK_SIZE);
@@ -382,7 +382,7 @@ function createPiece(type) {
         matrix: SHAPES[type].map(row => [...row]),
         pos: { x: Math.floor(COLS / 2) - 1, y: 0 },
         type: type,
-        isBonus: Math.random() < 0.01 // 1%の確率でボーナスブロック
+        isBonus: Math.random() < 0.03 // 3%の確率でボーナスブロック
     };
 }
 
