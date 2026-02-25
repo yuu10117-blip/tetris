@@ -132,6 +132,17 @@ function playSound(type) {
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.08);
+        } else if (type === 'bonus_clear') {
+            // ボーナス消去特殊効果音（上昇アルペジオ）
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.08);
+            osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.16);
+            osc.frequency.setValueAtTime(1047, audioCtx.currentTime + 0.24);
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.4);
         }
     } catch (e) {
         // 音声エラーは無視（ゲームを止めない）
@@ -254,19 +265,20 @@ function isHighScore(newScore) {
     return newScore > scores[0].score;
 }
 
-// ハイスコアを保存（名前付き、一意のIDで管理）
+// ハイスコアを保存（名前付き、レベルも保存）
 function saveHighScore(newScore, name) {
     const scores = loadHighScores();
     const entry = {
         name: name || '---',
         score: Number(newScore),
-        id: Date.now() // 一意IDでエントリを識別
+        level: level, // レベルも保存
+        id: Date.now()
     };
     scores.push(entry);
     scores.sort((a, b) => b.score - a.score);
     scores.splice(MAX_HIGH_SCORES);
     saveHighScores(scores);
-    return entry.id; // 追加したエントリのIDを返す
+    return entry.id;
 }
 
 // ゲームオーバー画面にハイスコア一覧を表示
@@ -358,10 +370,11 @@ function renderHighScoreTable(container, highlightId) {
         container.innerHTML = html;
         return;
     }
-    html += '<table><tr><th>#</th><th>NAME</th><th>SCORE</th></tr>';
+    html += '<table><tr><th>#</th><th>NAME</th><th>SCORE</th><th>LV</th></tr>';
     scores.forEach((entry, i) => {
         const cls = (highlightId && entry.id === highlightId) ? ' class="highlight"' : '';
-        html += `<tr${cls}><td>${i + 1}</td><td>${entry.name}</td><td>${entry.score}</td></tr>`;
+        const lv = entry.level || '?';
+        html += `<tr${cls}><td>${i + 1}</td><td>${entry.name}</td><td>${entry.score}</td><td>${lv}</td></tr>`;
     });
     html += '</table>';
     container.innerHTML = html;
@@ -490,12 +503,26 @@ function arenaSweep(multiplier = 1) {
     }
 
     if (rowCount > 0) {
-        playSound('clear');
+        if (multiplier > 1) {
+            // ボーナス消去時の特殊エフェクト
+            playSound('bonus_clear');
+            triggerBonusFlash();
+        } else {
+            playSound('clear');
+        }
         score += rowScore[rowCount] * level * multiplier;
         level = Math.floor(score / 1000) + 1;
         dropInterval = Math.max(100, 1000 - (level - 1) * 100);
         updateScore();
     }
+}
+
+// ボーナス消去時の画面フラッシュエフェクト
+let bonusFlashTimer = 0;
+const BONUS_FLASH_DURATION = 500; // 0.5秒間の金色フラッシュ
+
+function triggerBonusFlash() {
+    bonusFlashTimer = BONUS_FLASH_DURATION;
 }
 
 // 画面にスコアとレベルを反映
@@ -668,6 +695,21 @@ function draw() {
         });
     }
 
+    // ボーナス消去時の画面フラッシュエフェクト
+    if (bonusFlashTimer > 0) {
+        const alpha = (bonusFlashTimer / BONUS_FLASH_DURATION) * 0.4;
+        ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+        ctx.fillRect(0, 0, COLS, ROWS);
+        // ×10 テキスト表示
+        ctx.save();
+        ctx.scale(1 / BLOCK_SIZE, 1 / BLOCK_SIZE);
+        ctx.font = 'bold 48px sans-serif';
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 2.5})`;
+        ctx.textAlign = 'center';
+        ctx.fillText('×10 BONUS!', (COLS * BLOCK_SIZE) / 2, (ROWS * BLOCK_SIZE) / 2);
+        ctx.restore();
+    }
+
     // ゴーストブロックを描画
     const ghostPos = getGhostPos();
     drawMatrix(currentPiece.matrix, ghostPos, ctx, true);
@@ -727,6 +769,12 @@ function update(time = 0) {
             lockFlashTimer = 0;
             lockFlashCells = [];
         }
+    }
+
+    // ボーナスフラッシュエフェクトのタイマー更新
+    if (bonusFlashTimer > 0) {
+        bonusFlashTimer -= deltaTime;
+        if (bonusFlashTimer <= 0) bonusFlashTimer = 0;
     }
 
     // 地面に接しているかチェック
