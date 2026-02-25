@@ -235,24 +235,19 @@ canvas {
 
 .start-guide-scroll {
     flex: 1;
-    overflow-y: auto;
-    overflow-x: auto;
+    overflow: hidden;
     width: 100%;
-    -webkit-overflow-scrolling: touch;
-    -ms-overflow-style: none;
-    /* IE, Edge */
-    scrollbar-width: none;
-    /* Firefox */
-}
-
-.start-guide-scroll::-webkit-scrollbar {
-    display: none;
-    /* Chrome, Safari, Opera */
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .start-guide-img {
-    width: 200%;
-    max-width: none;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
     display: block;
 }
 
