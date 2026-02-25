@@ -30,7 +30,9 @@ const COLORS = [
     '#eab308', // O (Yellow 500)
     '#22c55e', // S (Green 500)
     '#a855f7', // T (Purple 500)
-    '#ef4444'  // Z (Red 500)
+    '#ef4444', // Z (Red 500)
+    '#6b7280', // 8: お邪魔ブロック（グレー）
+    '#e879f9'  // 9: 爆弾ブロック（ピンクパープル）
 ];
 
 // テトリミノ（ブロック）の形状定義
@@ -156,6 +158,56 @@ function playSound(type) {
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.5);
+        } else if (type === 'tspin') {
+            // T-Spin効果音（重厚な回転音）
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime + 0.1);
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.2);
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+        } else if (type === 'perfect') {
+            // パーフェクトクリア効果音（華やかなファンファーレ）
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.08);
+            osc.frequency.setValueAtTime(1047, audioCtx.currentTime + 0.16);
+            osc.frequency.setValueAtTime(1319, audioCtx.currentTime + 0.24);
+            osc.frequency.setValueAtTime(1568, audioCtx.currentTime + 0.32);
+            osc.frequency.setValueAtTime(2093, audioCtx.currentTime + 0.40);
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.6);
+        } else if (type === 'hold') {
+            // ホールド効果音
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(700, audioCtx.currentTime + 0.05);
+            gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.08);
+        } else if (type === 'explosion') {
+            // 爆弾ブロック爆発音
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.3);
+            gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        } else if (type === 'garbage') {
+            // お邪魔ブロック追加音
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.15);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
         }
     } catch (e) {
         // 音声エラーは無視（ゲームを止めない）
@@ -228,6 +280,21 @@ let nextQueue = [];
 // ポーズとゲームオーバー状態
 let isPaused = false;
 let isGameOver = false;
+
+// ホールドシステム
+let holdPiece = null;
+let holdUsed = false; // 1ターンに1回のみ
+
+// T-Spin検出用
+let lastMoveWasRotation = false;
+
+// Back-to-Backフラグ
+let backToBack = false;
+
+// お邪魔ブロックカウンター
+let garbageCounter = 0;
+const GARBAGE_START_LEVEL = 10;
+const GARBAGE_CHANCE = 0.15; // 15%
 
 let score = 0;
 let level = 1;
@@ -408,12 +475,125 @@ const LOCK_DELAY = 500; // 0.5秒でロック
 
 // ブロックを作成する関数（3%の確率でボーナスブロック、Oブロックは除外）
 function createPiece(type) {
-    return {
-        matrix: SHAPES[type].map(row => [...row]),
+    const matrix = SHAPES[type].map(row => [...row]);
+    const piece = {
+        matrix: matrix,
         pos: { x: Math.floor(COLS / 2) - 1, y: 0 },
         type: type,
         isBonus: type !== 4 && Math.random() < 0.03 // Oブロック（黄色正方形）にはボーナス非適用
     };
+
+    // 爆弾ブロック: 2%の確率でピースの1マスを爆弾(値=9)に変換
+    if (Math.random() < 0.02) {
+        const filledCells = [];
+        matrix.forEach((row, y) => {
+            row.forEach((val, x) => {
+                if (val !== 0) filledCells.push({ x, y });
+            });
+        });
+        if (filledCells.length > 0) {
+            const cell = filledCells[Math.floor(Math.random() * filledCells.length)];
+            matrix[cell.y][cell.x] = 9;
+            piece.hasBomb = true;
+        }
+    }
+
+    return piece;
+}
+
+// ホールド機能: 現在のブロックをストック/交換
+function holdCurrentPiece() {
+    if (holdUsed) return; // 1ターン1回制限
+    holdUsed = true;
+    playSound('hold');
+
+    if (holdPiece === null) {
+        // 初回ホールド: 現在のピースをストックし、Nextから取得
+        holdPiece = currentPiece.type;
+        currentPiece = popNextPiece();
+    } else {
+        // 交換: ホールド中のピースと入れ替え
+        const tempType = holdPiece;
+        holdPiece = currentPiece.type;
+        currentPiece = createPiece(tempType);
+    }
+    lockDelayCounter = 0;
+    dropCounter = 0;
+}
+
+// ホールドピースの描画
+function drawHoldPiece() {
+    // PC用HOLDキャンバス
+    const holdCanvas = document.getElementById('hold-board');
+    const holdCtx = holdCanvas ? holdCanvas.getContext('2d') : null;
+    if (holdCtx && holdCanvas) {
+        holdCtx.fillStyle = '#0f172a';
+        holdCtx.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
+        if (holdPiece !== null) {
+            const matrix = SHAPES[holdPiece].map(row => [...row]);
+            const piece = { matrix, isBonus: false };
+            drawNextPiece(piece, holdCanvas, holdCtx);
+            // ホールド使用済みの場合は暗くする
+            if (holdUsed) {
+                holdCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                holdCtx.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
+            }
+        }
+    }
+    // モバイル用HOLDキャンバス
+    const holdMobileCanvas = document.getElementById('hold-board-mobile');
+    const holdMobileCtx = holdMobileCanvas ? holdMobileCanvas.getContext('2d') : null;
+    if (holdMobileCtx && holdMobileCanvas) {
+        holdMobileCtx.fillStyle = '#0f172a';
+        holdMobileCtx.fillRect(0, 0, holdMobileCanvas.width, holdMobileCanvas.height);
+        if (holdPiece !== null) {
+            const matrix = SHAPES[holdPiece].map(row => [...row]);
+            const piece = { matrix, isBonus: false };
+            drawNextPiece(piece, holdMobileCanvas, holdMobileCtx);
+            if (holdUsed) {
+                holdMobileCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                holdMobileCtx.fillRect(0, 0, holdMobileCanvas.width, holdMobileCanvas.height);
+            }
+        }
+    }
+}
+
+// T-Spin検出: Tブロックが回転直後にロックされた場合、4隅のうち3つ以上が埋まっているかチェック
+function detectTSpin(piece) {
+    if (piece.type !== 6) return false; // Tブロックのみ
+    if (!lastMoveWasRotation) return false; // 最後の操作が回転でなければ無効
+
+    // Tブロックの中心位置を取得
+    const cx = piece.pos.x + 1;
+    const cy = piece.pos.y + 1;
+
+    // 4隅をチェック
+    const corners = [
+        { x: cx - 1, y: cy - 1 },
+        { x: cx + 1, y: cy - 1 },
+        { x: cx - 1, y: cy + 1 },
+        { x: cx + 1, y: cy + 1 }
+    ];
+
+    let filledCorners = 0;
+    corners.forEach(c => {
+        if (c.y < 0 || c.y >= ROWS || c.x < 0 || c.x >= COLS || board[c.y][c.x] !== 0) {
+            filledCorners++;
+        }
+    });
+
+    return filledCorners >= 3;
+}
+
+// お邪魔ブロック: 盤面下部に1行グレーブロックを追加（1箇所だけ穴）
+function addGarbageLine() {
+    // 盤面の最上行を削除し、下に新行を追加
+    board.shift();
+    const garbageRow = Array(COLS).fill(8); // 8 = お邪魔ブロック（グレー）
+    const holePos = Math.floor(Math.random() * COLS);
+    garbageRow[holePos] = 0; // 穴
+    board.push(garbageRow);
+    playSound('garbage');
 }
 
 // Nextキューを初期化（3つ先まで）
@@ -479,9 +659,20 @@ function triggerLockFlash(piece) {
 // ブロックを盤面に固定し、次のブロックへ移行する処理
 function lockPiece() {
     const wasBonus = currentPiece.isBonus; // ボーナスピースかどうかを記録
+    const wasTSpin = detectTSpin(currentPiece); // T-Spin検出
+    const hasBomb = currentPiece.hasBomb; // 爆弾ブロック検出
     triggerLockFlash(currentPiece);
     merge(board, currentPiece);
-    arenaSweep(wasBonus ? 10 : 1); // ボーナスなら10倍スコア
+    arenaSweep(wasBonus ? 10 : 1, wasTSpin, hasBomb); // ボーナスなら10倍スコア、T-Spinと爆弾フラグも渡す
+
+    // お邪魔ブロック: Lv10以降、15%の確率で1行追加
+    if (level >= GARBAGE_START_LEVEL && Math.random() < GARBAGE_CHANCE) {
+        addGarbageLine();
+    }
+
+    // ホールド使用制限をリセット
+    holdUsed = false;
+    lastMoveWasRotation = false;
 
     currentPiece = popNextPiece();
 
@@ -510,24 +701,72 @@ function dropPiece() {
 let tetrisCombo = 0;
 
 // 行の消去判定とスコア計算（multiplier: ボーナスブロック時に10倍）
-function arenaSweep(multiplier = 1) {
-    let rowCount = 0;
-    outer: for (let y = board.length - 1; y >= 0; --y) {
+function arenaSweep(multiplier = 1, isTSpin = false, hasBomb = false) {
+    // 爆弾ブロック: 消去行に爆弾(値=9)が含まれていた場合、上下1行も消去対象に追加
+    let rowsToRemove = new Set();
+    for (let y = board.length - 1; y >= 0; --y) {
+        let isFull = true;
         for (let x = 0; x < board[y].length; ++x) {
-            if (board[y][x] === 0) continue outer;
+            if (board[y][x] === 0) { isFull = false; break; }
         }
-        const row = board.splice(y, 1)[0].fill(0);
-        board.unshift(row);
-        ++y;
-        rowCount++;
+        if (isFull) {
+            rowsToRemove.add(y);
+            // 爆弾チェック: この行に値9のセルがあるか
+            if (hasBomb) {
+                for (let x = 0; x < board[y].length; ++x) {
+                    if (board[y][x] === 9) {
+                        // 上下の行も消去対象に追加
+                        if (y - 1 >= 0) rowsToRemove.add(y - 1);
+                        if (y + 1 < board.length) rowsToRemove.add(y + 1);
+                        playSound('explosion');
+                        triggerExplosionFlash();
+                    }
+                }
+            }
+        }
     }
 
+    // 消去対象の行を実際に消去
+    let rowCount = 0;
+    if (rowsToRemove.size > 0) {
+        const sortedRows = Array.from(rowsToRemove).sort((a, b) => b - a);
+        sortedRows.forEach(y => {
+            board.splice(y, 1);
+            board.unshift(Array(COLS).fill(0));
+            rowCount++;
+        });
+    }
+
+    // T-Spinの「難しい」消去かどうか判定
+    const isDifficult = (rowCount >= 4) || isTSpin;
+
     if (rowCount > 0) {
+        // T-Spinボーナス
+        let tSpinMultiplier = 1;
+        if (isTSpin) {
+            tSpinMultiplier = 3; // T-Spinは3倍スコア
+            playSound('tspin');
+            triggerSpecialFlash('T-SPIN!', '#a855f7');
+        }
+
+        // Back-to-Backボーナス
+        let b2bMultiplier = 1;
+        if (isDifficult && backToBack) {
+            b2bMultiplier = 1.5; // B2B: 1.5倍ボーナス
+            triggerSpecialFlash('B2B!', '#fbbf24');
+        }
+        // B2Bフラグ更新
+        if (isDifficult) {
+            backToBack = true;
+        } else {
+            backToBack = false;
+        }
+
         if (rowCount >= 4) {
             // テトリス達成！コンボ加算
             tetrisCombo++;
-            const comboMultiplier = 1 + (tetrisCombo - 1) * 0.5; // 1倍, 1.5倍, 2倍, 2.5倍...
-            const gained = Math.floor(rowScore[rowCount] * level * multiplier * comboMultiplier);
+            const comboMultiplier = 1 + (tetrisCombo - 1) * 0.5;
+            const gained = Math.floor(rowScore[Math.min(rowCount, 4)] * level * multiplier * comboMultiplier * tSpinMultiplier * b2bMultiplier);
             playSound('tetris');
             triggerTetrisFlash(gained, tetrisCombo);
             if (multiplier > 1) {
@@ -538,7 +777,7 @@ function arenaSweep(multiplier = 1) {
         } else {
             // テトリス以外の消去 → コンボリセット
             tetrisCombo = 0;
-            const gained = rowScore[rowCount] * level * multiplier;
+            const gained = Math.floor(rowScore[rowCount] * level * multiplier * tSpinMultiplier * b2bMultiplier);
             if (multiplier > 1) {
                 playSound('bonus_clear');
                 triggerBonusFlash(gained);
@@ -547,6 +786,15 @@ function arenaSweep(multiplier = 1) {
             }
             score += gained;
         }
+
+        // パーフェクトクリア: 消去後に盤面が完全に空かチェック
+        const isPerfectClear = board.every(row => row.every(cell => cell === 0));
+        if (isPerfectClear) {
+            score += 500;
+            playSound('perfect');
+            triggerSpecialFlash('PERFECT CLEAR!', '#22d3ee');
+        }
+
         level = Math.floor(score / 1000) + 1;
         dropInterval = Math.max(100, 1000 - (level - 1) * 100);
         updateScore();
@@ -554,6 +802,26 @@ function arenaSweep(multiplier = 1) {
         // ライン消去なし → コンボリセット
         tetrisCombo = 0;
     }
+}
+
+// 特殊フラッシュエフェクト（T-Spin、B2B、パーフェクトクリア共通）
+let specialFlashTimer = 0;
+let specialFlashText = '';
+let specialFlashColor = '#fff';
+const SPECIAL_FLASH_DURATION = 1000;
+
+function triggerSpecialFlash(text, color) {
+    specialFlashTimer = SPECIAL_FLASH_DURATION;
+    specialFlashText = text;
+    specialFlashColor = color;
+}
+
+// 爆発エフェクト
+let explosionFlashTimer = 0;
+const EXPLOSION_FLASH_DURATION = 500;
+
+function triggerExplosionFlash() {
+    explosionFlashTimer = EXPLOSION_FLASH_DURATION;
 }
 
 // ボーナス消去時の画面フラッシュエフェクト
@@ -596,6 +864,7 @@ function movePiece(dir) {
     } else {
         playSound('move');
         lockDelayCounter = 0;
+        lastMoveWasRotation = false; // 移動したらT-Spin無効
     }
 }
 
@@ -631,6 +900,7 @@ function rotatePiece(dir) {
     }
     playSound('rotate');
     lockDelayCounter = 0;
+    lastMoveWasRotation = true; // T-Spin検出用: 最後の操作が回転
 }
 
 // 次の落下予測位置（ゴースト）を計算
@@ -824,12 +1094,44 @@ function draw() {
         ctx.restore();
     }
 
+    // 特殊フラッシュエフェクト（T-Spin、B2B、パーフェクトクリア）
+    if (specialFlashTimer > 0) {
+        const progress = specialFlashTimer / SPECIAL_FLASH_DURATION;
+        ctx.save();
+        ctx.scale(1 / BLOCK_SIZE, 1 / BLOCK_SIZE);
+        ctx.textAlign = 'center';
+        const cx = (COLS * BLOCK_SIZE) / 2;
+        const cy = (ROWS * BLOCK_SIZE) / 2;
+        const scale = 1 + (1 - progress) * 0.3;
+        ctx.translate(cx, cy - 80);
+        ctx.scale(scale, scale);
+        ctx.font = 'bold 40px sans-serif';
+        ctx.fillStyle = specialFlashColor.replace(')', `, ${progress})`.replace('rgb', 'rgba'));
+        ctx.fillStyle = `rgba(255, 255, 255, ${progress})`;
+        ctx.strokeStyle = specialFlashColor;
+        ctx.lineWidth = 3;
+        ctx.strokeText(specialFlashText, 0, 0);
+        ctx.fillText(specialFlashText, 0, 0);
+        ctx.restore();
+    }
+
+    // 爆発エフェクト
+    if (explosionFlashTimer > 0) {
+        const progress = explosionFlashTimer / EXPLOSION_FLASH_DURATION;
+        const alpha = progress * 0.4;
+        ctx.fillStyle = `rgba(255, 120, 0, ${alpha})`;
+        ctx.fillRect(0, 0, COLS, ROWS);
+    }
+
     // ゴーストブロックを描画
     const ghostPos = getGhostPos();
     drawMatrix(currentPiece.matrix, ghostPos, ctx, true);
 
     // 落下中のブロックを描画
     drawMatrix(currentPiece.matrix, currentPiece.pos, ctx, false, currentPiece.isBonus);
+
+    // --- HOLDピースの描画 ---
+    drawHoldPiece();
 
     // --- PC用Nextブロックの描画（1つ目） ---
     nextCtx.fillStyle = '#0f172a';
@@ -897,6 +1199,18 @@ function update(time = 0) {
         if (tetrisFlashTimer <= 0) tetrisFlashTimer = 0;
     }
 
+    // 特殊フラッシュエフェクトのタイマー更新
+    if (specialFlashTimer > 0) {
+        specialFlashTimer -= deltaTime;
+        if (specialFlashTimer <= 0) specialFlashTimer = 0;
+    }
+
+    // 爆発フラッシュエフェクトのタイマー更新
+    if (explosionFlashTimer > 0) {
+        explosionFlashTimer -= deltaTime;
+        if (explosionFlashTimer <= 0) explosionFlashTimer = 0;
+    }
+
     // 地面に接しているかチェック
     currentPiece.pos.y++;
     const isTouching = collide(board, currentPiece);
@@ -952,6 +1266,16 @@ function restartGame() {
     isGameOver = false;
     lockFlashCells = [];
     lockFlashTimer = 0;
+    // 新機能のリセット
+    holdPiece = null;
+    holdUsed = false;
+    lastMoveWasRotation = false;
+    backToBack = false;
+    tetrisCombo = 0;
+    specialFlashTimer = 0;
+    explosionFlashTimer = 0;
+    bonusFlashTimer = 0;
+    tetrisFlashTimer = 0;
     document.getElementById('game-over-overlay').classList.add('hidden');
     nextQueue = [];
     fillNextQueue();
@@ -964,7 +1288,7 @@ function restartGame() {
 
 // キーボード操作の受付
 document.addEventListener('keydown', event => {
-    if ([32, 37, 38, 39, 40, 80].includes(event.keyCode)) {
+    if ([32, 37, 38, 39, 40, 72, 80].includes(event.keyCode)) {
         event.preventDefault();
     }
 
@@ -996,6 +1320,7 @@ document.addEventListener('keydown', event => {
         case 37: movePiece(-1); break;
         case 39: movePiece(1); break;
         case 40: dropPiece(); break;
+        case 72: holdCurrentPiece(); break; // Hキーでホールド
         case 38: rotatePiece(1); break;
         case 32: {
             // 地面に接触中（ロックディレイ中）なら2回目のDROPで即座に固定
@@ -1027,8 +1352,9 @@ const btnRight = document.getElementById('btn-right');
 const btnUp = document.getElementById('btn-up');
 const btnSpace = document.getElementById('btn-space');
 const btnPause = document.getElementById('btn-pause');
+const btnHold = document.getElementById('btn-hold');
 
-[btnLeft, btnRight, btnUp, btnSpace, btnPause].forEach(btn => {
+[btnLeft, btnRight, btnUp, btnSpace, btnPause, btnHold].forEach(btn => {
     if (btn) btn.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
 });
 
@@ -1065,6 +1391,11 @@ if (btnLeft) {
     });
     btnRight.addEventListener('pointerup', () => stopRepeat('right'));
     btnRight.addEventListener('pointerleave', () => stopRepeat('right'));
+
+    // HOLDボタン（単発）
+    if (btnHold) {
+        btnHold.addEventListener('pointerdown', () => { if (!isPaused && !isGameOver) holdCurrentPiece(); });
+    }
 
     // 回転ボタン（単発）
     btnUp.addEventListener('pointerdown', () => { if (!isPaused && !isGameOver) rotatePiece(1); });

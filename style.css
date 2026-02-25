@@ -134,6 +134,12 @@ canvas {
     margin: 0 auto;
 }
 
+#hold-board {
+    background: rgba(8, 12, 25, 0.8);
+    border-radius: 8px;
+    margin: 0 auto;
+}
+
 .controls-help {
     margin-top: auto;
     font-size: 11px;
@@ -439,6 +445,21 @@ canvas {
         gap: 3px;
     }
 
+    .mobile-sidebar .mobile-hold-box {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+    }
+
+    #hold-board-mobile {
+        background: rgba(8, 12, 25, 0.7);
+        border-radius: 6px;
+        width: 46px;
+        height: 46px;
+    }
+
     #next-board-mobile-1 {
         background: rgba(8, 12, 25, 0.7);
         border-radius: 6px;
@@ -495,6 +516,32 @@ canvas {
         width: 100%;
         padding: 10px 0 calc(28px + env(safe-area-inset-bottom, 0px)) 0;
         position: relative;
+    }
+
+    /* HOLDボタン（紫のリキッドグラス）— 回転ボタンの左側・上段配置 */
+    .btn-hold {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        padding: 0;
+        background: linear-gradient(145deg, rgba(168, 85, 247, 0.2), rgba(147, 51, 234, 0.12));
+        border: 1.5px solid rgba(168, 85, 247, 0.5);
+        color: rgba(216, 180, 254, 0.95);
+        box-shadow:
+            0 4px 20px rgba(168, 85, 247, 0.15),
+            inset 0 1px 0 rgba(255, 255, 255, 0.15),
+            inset 0 -2px 4px rgba(168, 85, 247, 0.1);
+        align-self: flex-start;
+        margin-top: -89px;
+        flex-shrink: 0;
+    }
+
+    .btn-hold:active {
+        background: linear-gradient(145deg, rgba(168, 85, 247, 0.4), rgba(147, 51, 234, 0.25));
+        transform: scale(0.93);
     }
 
     /* DROPボタン（赤のリキッドグラス）— 左右ボタンと同サイズ */

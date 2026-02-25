@@ -20,6 +20,10 @@
                 <canvas id="next-board" width="120" height="120"></canvas>
             </div>
             <div class="info-box">
+                <div class="info-title">HOLD</div>
+                <canvas id="hold-board" width="120" height="120"></canvas>
+            </div>
+            <div class="info-box">
                 <div class="info-title">LEVEL</div>
                 <div class="info-value" id="level">1</div>
             </div>
@@ -57,6 +61,7 @@
                 <p>↑ : 回転</p>
                 <p>↓ : 速く落とす</p>
                 <p>Space : 一気に落とす</p>
+                <p>H : ホールド</p>
                 <br>
                 <p>P : ポーズ</p>
             </div>
@@ -71,6 +76,10 @@
                             <canvas id="next-board-mobile-1" width="55" height="55"></canvas>
                             <canvas id="next-board-mobile-2" width="45" height="45"></canvas>
                             <canvas id="next-board-mobile-3" width="45" height="45"></canvas>
+                        </div>
+                        <div class="info-box mobile-hold-box">
+                            <div class="info-title">HOLD</div>
+                            <canvas id="hold-board-mobile" width="50" height="50"></canvas>
                         </div>
                         <div class="info-box">
                             <div class="info-title">LV</div>
@@ -87,6 +96,7 @@
 
                 <!-- 操作ボタン: 回転 DROP ◀ ▶ -->
                 <div class="mobile-ctrl-row">
+                    <button id="btn-hold" class="btn-ctrl btn-hold">HOLD</button>
                     <button id="btn-up" class="btn-ctrl btn-rotate">↻</button>
                     <button id="btn-space" class="btn-ctrl btn-drop">DROP</button>
                     <button id="btn-left" class="btn-ctrl btn-move">◀</button>
