@@ -210,7 +210,7 @@ let level = 1;
 const rowScore = [0, 10, 30, 50, 80];
 
 // --- ハイスコア管理（名前付き） ---
-const HIGH_SCORES_KEY = 'tetris_high_scores_v2';
+const HIGH_SCORES_KEY = 'tetris_high_scores_v3'; // v3: スコア体系変更に伴いリセット
 const MAX_HIGH_SCORES = 5;
 
 // ブロック固定エフェクト用
@@ -376,12 +376,13 @@ let dropInterval = 1000;
 let lockDelayCounter = 0;
 const LOCK_DELAY = 500; // 0.5秒でロック
 
-// ブロックを作成する関数
+// ブロックを作成する関数（1%の確率でボーナスブロック）
 function createPiece(type) {
     return {
         matrix: SHAPES[type].map(row => [...row]),
         pos: { x: Math.floor(COLS / 2) - 1, y: 0 },
-        type: type
+        type: type,
+        isBonus: Math.random() < 0.01 // 1%の確率でボーナスブロック
     };
 }
 
@@ -447,9 +448,10 @@ function triggerLockFlash(piece) {
 
 // ブロックを盤面に固定し、次のブロックへ移行する処理
 function lockPiece() {
+    const wasBonus = currentPiece.isBonus; // ボーナスピースかどうかを記録
     triggerLockFlash(currentPiece);
     merge(board, currentPiece);
-    arenaSweep();
+    arenaSweep(wasBonus ? 10 : 1); // ボーナスなら10倍スコア
 
     currentPiece = popNextPiece();
 
@@ -474,8 +476,8 @@ function dropPiece() {
     }
 }
 
-// 行の消去判定とスコア計算
-function arenaSweep() {
+// 行の消去判定とスコア計算（multiplier: ボーナスブロック時に10倍）
+function arenaSweep(multiplier = 1) {
     let rowCount = 0;
     outer: for (let y = board.length - 1; y >= 0; --y) {
         for (let x = 0; x < board[y].length; ++x) {
@@ -489,7 +491,7 @@ function arenaSweep() {
 
     if (rowCount > 0) {
         playSound('clear');
-        score += rowScore[rowCount] * level;
+        score += rowScore[rowCount] * level * multiplier;
         level = Math.floor(score / 1000) + 1;
         dropInterval = Math.max(100, 1000 - (level - 1) * 100);
         updateScore();
@@ -596,6 +598,22 @@ function drawMatrix(matrix, offset, targetCtx, isGhost = false) {
                     targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                     targetCtx.lineWidth = 0.04;
                     targetCtx.strokeRect(bx + 0.07, by + 0.07, 0.86, 0.86);
+
+                    // ボーナスブロックの輝くエフェクト
+                    if (piece.isBonus) {
+                        const glowPulse = 0.4 + 0.3 * Math.sin(Date.now() / 150);
+                        // 金色のグロー
+                        targetCtx.fillStyle = `rgba(255, 215, 0, ${glowPulse})`;
+                        targetCtx.fillRect(bx + 0.05, by + 0.05, 0.9, 0.9);
+                        // 白いスパークル
+                        targetCtx.fillStyle = `rgba(255, 255, 255, ${glowPulse * 0.7})`;
+                        targetCtx.fillRect(bx + 0.25, by + 0.2, 0.15, 0.15);
+                        targetCtx.fillRect(bx + 0.6, by + 0.55, 0.1, 0.1);
+                        // 金色の境界線
+                        targetCtx.strokeStyle = `rgba(255, 215, 0, ${glowPulse + 0.2})`;
+                        targetCtx.lineWidth = 0.08;
+                        targetCtx.strokeRect(bx + 0.05, by + 0.05, 0.9, 0.9);
+                    }
                 }
             }
         });
