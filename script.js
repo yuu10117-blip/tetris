@@ -402,13 +402,13 @@ let dropInterval = 1000;
 let lockDelayCounter = 0;
 const LOCK_DELAY = 500; // 0.5秒でロック
 
-// ブロックを作成する関数（1%の確率でボーナスブロック）
+// ブロックを作成する関数（3%の確率でボーナスブロック、Oブロックは除外）
 function createPiece(type) {
     return {
         matrix: SHAPES[type].map(row => [...row]),
         pos: { x: Math.floor(COLS / 2) - 1, y: 0 },
         type: type,
-        isBonus: Math.random() < 0.03 // 3%の確率でボーナスブロック
+        isBonus: type !== 4 && Math.random() < 0.03 // Oブロック（黄色正方形）にはボーナス非適用
     };
 }
 
@@ -698,13 +698,27 @@ function drawNextPiece(piece, canvasEl, ctxEl) {
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
+                const px = offsetX + x * blockSize + 1;
+                const py = offsetY + y * blockSize + 1;
+                const bs = blockSize - 2;
                 ctxEl.fillStyle = COLORS[value];
-                ctxEl.fillRect(
-                    offsetX + x * blockSize + 1,
-                    offsetY + y * blockSize + 1,
-                    blockSize - 2,
-                    blockSize - 2
-                );
+                ctxEl.fillRect(px, py, bs, bs);
+
+                // ボーナスブロックのレインボーエフェクト
+                if (piece.isBonus) {
+                    const t = Date.now() / 200;
+                    const hue = (t * 60 + (x + y) * 50) % 360;
+                    const pulse = 0.45 + 0.25 * Math.sin(t * 3);
+                    ctxEl.fillStyle = `hsla(${hue}, 100%, 65%, ${pulse})`;
+                    ctxEl.fillRect(px, py, bs, bs);
+                    // 白いスパークル
+                    ctxEl.fillStyle = `rgba(255, 255, 255, ${0.3 + 0.4 * Math.sin(t * 5)})`;
+                    ctxEl.fillRect(px + bs * 0.25, py + bs * 0.15, bs * 0.15, bs * 0.15);
+                    // レインボー境界線
+                    ctxEl.strokeStyle = `hsla(${(hue + 180) % 360}, 100%, 70%, ${pulse + 0.2})`;
+                    ctxEl.lineWidth = 2;
+                    ctxEl.strokeRect(px, py, bs, bs);
+                }
             }
         });
     });
