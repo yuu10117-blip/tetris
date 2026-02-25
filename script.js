@@ -12,10 +12,10 @@ const nextMobileCanvases = [
 const nextMobileCtxs = nextMobileCanvases.map(c => c ? c.getContext('2d') : null);
 
 // 1マスのサイズ（px）
-const BLOCK_SIZE = 30;
+const BLOCK_SIZE = 24;
 // 盤面のサイズ（行、列）
-const ROWS = 20;
-const COLS = 10;
+const ROWS = 24;
+const COLS = 12;
 
 // キャンバスのサイズを調整してスケールを設定
 ctx.scale(BLOCK_SIZE, BLOCK_SIZE);

@@ -397,12 +397,12 @@ canvas {
         grid-area: board;
         justify-self: start;
         border-radius: 14px;
-        max-height: 55vh;
+        max-height: 50vh;
         overflow: hidden;
     }
 
     .board-wrapper canvas {
-        max-height: 55vh;
+        max-height: 50vh;
         width: auto;
     }
 
