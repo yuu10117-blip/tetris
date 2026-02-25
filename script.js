@@ -854,7 +854,7 @@ function startRepeat(key, action) {
     repeatTimers[key] = setTimeout(() => {
         repeatTimers[key + '_interval'] = setInterval(() => {
             action();
-        }, 80);
+        }, 40);
     }, 200);
 }
 
