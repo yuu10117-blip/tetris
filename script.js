@@ -725,16 +725,14 @@ function arenaSweep(multiplier = 1, isTSpin = false, hasBomb = false) {
         }
         if (isFull) {
             rowsToRemove.add(y);
-            // 爆弾チェック: この行に値9のセルがあるか
-            if (hasBomb) {
-                for (let x = 0; x < board[y].length; ++x) {
-                    if (board[y][x] === 9) {
-                        // 上下の行も消去対象に追加
-                        if (y - 1 >= 0) rowsToRemove.add(y - 1);
-                        if (y + 1 < board.length) rowsToRemove.add(y + 1);
-                        playSound('explosion');
-                        triggerExplosionFlash();
-                    }
+            // 爆弾チェック: 消去される行に値9のセルがあるか
+            for (let x = 0; x < board[y].length; ++x) {
+                if (board[y][x] === 9) {
+                    // 上下の行も消去対象に追加
+                    if (y - 1 >= 0) rowsToRemove.add(y - 1);
+                    if (y + 1 < board.length) rowsToRemove.add(y + 1);
+                    playSound('explosion');
+                    triggerExplosionFlash();
                 }
             }
         }
