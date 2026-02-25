@@ -207,7 +207,7 @@ let isGameOver = false;
 
 let score = 0;
 let level = 1;
-const rowScore = [0, 40, 100, 300, 1200];
+const rowScore = [0, 10, 30, 50, 80];
 
 // --- ハイスコア管理（名前付き） ---
 const HIGH_SCORES_KEY = 'tetris_high_scores_v2';
@@ -374,7 +374,7 @@ let dropInterval = 1000;
 
 // 落下猶予用のタイマー（ロックダウン時間）
 let lockDelayCounter = 0;
-const LOCK_DELAY = 1000;
+const LOCK_DELAY = 500; // 0.5秒でロック
 
 // ブロックを作成する関数
 function createPiece(type) {
@@ -823,7 +823,7 @@ document.addEventListener('keydown', event => {
                 currentPiece.pos = getGhostPos();
                 // 落下距離×2点をスコアに加算
                 if (dropDistance > 0) {
-                    score += dropDistance * 2;
+                    score += dropDistance;
                     updateScore();
                 }
                 playSound('drop');
@@ -897,7 +897,7 @@ if (btnLeft) {
                 currentPiece.pos = getGhostPos();
                 // 落下距離×2点をスコアに加算
                 if (dropDistance > 0) {
-                    score += dropDistance * 2;
+                    score += dropDistance;
                     updateScore();
                 }
                 playSound('drop');
