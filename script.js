@@ -268,14 +268,14 @@ function saveHighScores(scores) {
     localStorage.setItem(HIGH_SCORES_KEY, JSON.stringify(scores));
 }
 
-// スコアがハイスコア1位を更新しているかチェック（名前入力＋NEW HIGH SCORE!表示の判定）
+// スコアがランキング入りするかチェック（上位5位以内なら名前入力可）
 function isHighScore(newScore) {
     if (newScore <= 0) return false;
     const scores = loadHighScores();
-    // 記録がなければ初のスコア＝ハイスコア
-    if (scores.length === 0) return true;
-    // 既存の1位を超えていればハイスコア更新
-    return newScore > scores[0].score;
+    // 空きスロットがあればランクイン
+    if (scores.length < MAX_HIGH_SCORES) return true;
+    // 最下位を上回っていればランクイン
+    return newScore > scores[scores.length - 1].score;
 }
 
 // ハイスコアを保存（名前付き、レベルも保存）
@@ -309,15 +309,19 @@ function showGameOverScreen() {
     scoreDisplay.textContent = 'YOUR SCORE: ' + finalScore;
 
     if (isHighScore(finalScore)) {
-        // ハイスコア更新 — 名前入力を表示
+        // ランキング入り — 名前入力を表示
         isWaitingForName = true;
         nameArea.classList.remove('hidden');
         restartMsg.classList.add('hidden');
         listEl.innerHTML = '';
 
-        // 「NEW HIGH SCORE!」ラベルを表示
+        // 「NEW HIGH SCORE!」ラベルは1位更新時のみ表示
+        const existingScores = loadHighScores();
         const goLabel = document.getElementById('go-new-high-label');
-        if (goLabel) goLabel.classList.remove('hidden');
+        if (goLabel) {
+            const isNewTop = existingScores.length === 0 || finalScore > existingScores[0].score;
+            goLabel.classList.toggle('hidden', !isNewTop);
+        }
 
         const input = document.getElementById('go-name-input');
         const okBtn = document.getElementById('go-name-ok');
@@ -812,7 +816,7 @@ function draw() {
             x: (120 / BLOCK_SIZE - nw) / 2,
             y: (120 / BLOCK_SIZE - nh) / 2
         };
-        drawMatrix(nextQueue[0].matrix, noff, nextCtx);
+        drawMatrix(nextQueue[0].matrix, noff, nextCtx, false, nextQueue[0].isBonus);
     }
 
     // --- モバイル用Nextブロックの描画（3つ） ---
