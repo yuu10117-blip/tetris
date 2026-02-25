@@ -564,7 +564,7 @@ function getGhostPos() {
 }
 
 // 描画関数：マス目を描く（リキッドグラス質感）
-function drawMatrix(matrix, offset, targetCtx, isGhost = false) {
+function drawMatrix(matrix, offset, targetCtx, isGhost = false, isBonus = false) {
     matrix.forEach((row, y) => {
         row.forEach((value, x) => {
             if (value !== 0) {
@@ -600,7 +600,7 @@ function drawMatrix(matrix, offset, targetCtx, isGhost = false) {
                     targetCtx.strokeRect(bx + 0.07, by + 0.07, 0.86, 0.86);
 
                     // ボーナスブロックの輝くエフェクト
-                    if (piece.isBonus) {
+                    if (isBonus) {
                         const glowPulse = 0.4 + 0.3 * Math.sin(Date.now() / 150);
                         // 金色のグロー
                         targetCtx.fillStyle = `rgba(255, 215, 0, ${glowPulse})`;
@@ -673,7 +673,7 @@ function draw() {
     drawMatrix(currentPiece.matrix, ghostPos, ctx, true);
 
     // 落下中のブロックを描画
-    drawMatrix(currentPiece.matrix, currentPiece.pos, ctx);
+    drawMatrix(currentPiece.matrix, currentPiece.pos, ctx, false, currentPiece.isBonus);
 
     // --- PC用Nextブロックの描画（1つ目） ---
     nextCtx.fillStyle = '#0f172a';
