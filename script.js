@@ -503,14 +503,15 @@ function arenaSweep(multiplier = 1) {
     }
 
     if (rowCount > 0) {
+        const gained = rowScore[rowCount] * level * multiplier;
         if (multiplier > 1) {
             // ボーナス消去時の特殊エフェクト
             playSound('bonus_clear');
-            triggerBonusFlash();
+            triggerBonusFlash(gained);
         } else {
             playSound('clear');
         }
-        score += rowScore[rowCount] * level * multiplier;
+        score += gained;
         level = Math.floor(score / 1000) + 1;
         dropInterval = Math.max(100, 1000 - (level - 1) * 100);
         updateScore();
@@ -519,10 +520,12 @@ function arenaSweep(multiplier = 1) {
 
 // ボーナス消去時の画面フラッシュエフェクト
 let bonusFlashTimer = 0;
-const BONUS_FLASH_DURATION = 500; // 0.5秒間の金色フラッシュ
+let bonusFlashScore = 0; // ボーナス加算スコア
+const BONUS_FLASH_DURATION = 600;
 
-function triggerBonusFlash() {
+function triggerBonusFlash(gained) {
     bonusFlashTimer = BONUS_FLASH_DURATION;
+    bonusFlashScore = gained;
 }
 
 // 画面にスコアとレベルを反映
@@ -626,18 +629,21 @@ function drawMatrix(matrix, offset, targetCtx, isGhost = false, isBonus = false)
                     targetCtx.lineWidth = 0.04;
                     targetCtx.strokeRect(bx + 0.07, by + 0.07, 0.86, 0.86);
 
-                    // ボーナスブロックの輝くエフェクト
+                    // ボーナスブロックの七色レインボーエフェクト
                     if (isBonus) {
-                        const glowPulse = 0.4 + 0.3 * Math.sin(Date.now() / 150);
-                        // 金色のグロー
-                        targetCtx.fillStyle = `rgba(255, 215, 0, ${glowPulse})`;
+                        const t = Date.now() / 200;
+                        const hue = (t * 60 + (bx + by) * 40) % 360;
+                        const pulse = 0.45 + 0.25 * Math.sin(t * 3);
+                        // レインボーグロー
+                        targetCtx.fillStyle = `hsla(${hue}, 100%, 65%, ${pulse})`;
                         targetCtx.fillRect(bx + 0.05, by + 0.05, 0.9, 0.9);
                         // 白いスパークル
-                        targetCtx.fillStyle = `rgba(255, 255, 255, ${glowPulse * 0.7})`;
-                        targetCtx.fillRect(bx + 0.25, by + 0.2, 0.15, 0.15);
-                        targetCtx.fillRect(bx + 0.6, by + 0.55, 0.1, 0.1);
-                        // 金色の境界線
-                        targetCtx.strokeStyle = `rgba(255, 215, 0, ${glowPulse + 0.2})`;
+                        const sparkle = 0.3 + 0.5 * Math.sin(t * 5 + bx * 2);
+                        targetCtx.fillStyle = `rgba(255, 255, 255, ${sparkle})`;
+                        targetCtx.fillRect(bx + 0.3, by + 0.2, 0.12, 0.12);
+                        targetCtx.fillRect(bx + 0.6, by + 0.6, 0.08, 0.08);
+                        // レインボー境界線
+                        targetCtx.strokeStyle = `hsla(${(hue + 180) % 360}, 100%, 70%, ${pulse + 0.2})`;
                         targetCtx.lineWidth = 0.08;
                         targetCtx.strokeRect(bx + 0.05, by + 0.05, 0.9, 0.9);
                     }
@@ -697,16 +703,24 @@ function draw() {
 
     // ボーナス消去時の画面フラッシュエフェクト
     if (bonusFlashTimer > 0) {
-        const alpha = (bonusFlashTimer / BONUS_FLASH_DURATION) * 0.4;
-        ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+        const progress = bonusFlashTimer / BONUS_FLASH_DURATION;
+        const alpha = progress * 0.35;
+        const hue = (Date.now() / 5) % 360;
+        // レインボーフラッシュ
+        ctx.fillStyle = `hsla(${hue}, 100%, 60%, ${alpha})`;
         ctx.fillRect(0, 0, COLS, ROWS);
-        // ×10 テキスト表示
+        // スコア表示
         ctx.save();
         ctx.scale(1 / BLOCK_SIZE, 1 / BLOCK_SIZE);
-        ctx.font = 'bold 48px sans-serif';
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 2.5})`;
         ctx.textAlign = 'center';
-        ctx.fillText('×10 BONUS!', (COLS * BLOCK_SIZE) / 2, (ROWS * BLOCK_SIZE) / 2);
+        // +スコア表示
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillStyle = `rgba(255, 255, 255, ${progress})`;
+        ctx.fillText(`+${bonusFlashScore}`, (COLS * BLOCK_SIZE) / 2, (ROWS * BLOCK_SIZE) / 2 - 20);
+        // ×10 BONUS! ラベル
+        ctx.font = 'bold 24px sans-serif';
+        ctx.fillStyle = `hsla(${hue}, 100%, 80%, ${progress})`;
+        ctx.fillText('×10 BONUS!', (COLS * BLOCK_SIZE) / 2, (ROWS * BLOCK_SIZE) / 2 + 20);
         ctx.restore();
     }
 
