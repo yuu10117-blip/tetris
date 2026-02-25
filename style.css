@@ -236,13 +236,23 @@ canvas {
 .start-guide-scroll {
     flex: 1;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
     width: 100%;
     -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+    /* IE, Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.start-guide-scroll::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
 }
 
 .start-guide-img {
-    width: 100%;
+    width: 200%;
+    max-width: none;
     display: block;
 }
 
