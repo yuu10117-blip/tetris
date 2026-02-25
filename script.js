@@ -143,6 +143,19 @@ function playSound(type) {
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.4);
+        } else if (type === 'tetris') {
+            // テトリス達成ファンファーレ
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+            osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.06);
+            osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.12);
+            osc.frequency.setValueAtTime(1047, audioCtx.currentTime + 0.18);
+            osc.frequency.setValueAtTime(1319, audioCtx.currentTime + 0.24);
+            osc.frequency.setValueAtTime(1568, audioCtx.currentTime + 0.30);
+            gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
         }
     } catch (e) {
         // 音声エラーは無視（ゲームを止めない）
@@ -504,11 +517,15 @@ function arenaSweep(multiplier = 1) {
 
     if (rowCount > 0) {
         const gained = rowScore[rowCount] * level * multiplier;
+        if (rowCount >= 4) {
+            // テトリス達成！4ライン以上消去
+            playSound('tetris');
+            triggerTetrisFlash(gained);
+        }
         if (multiplier > 1) {
-            // ボーナス消去時の特殊エフェクト
             playSound('bonus_clear');
             triggerBonusFlash(gained);
-        } else {
+        } else if (rowCount < 4) {
             playSound('clear');
         }
         score += gained;
@@ -526,6 +543,16 @@ const BONUS_FLASH_DURATION = 600;
 function triggerBonusFlash(gained) {
     bonusFlashTimer = BONUS_FLASH_DURATION;
     bonusFlashScore = gained;
+}
+
+// テトリス達成時のフラッシュエフェクト
+let tetrisFlashTimer = 0;
+let tetrisFlashScore = 0;
+const TETRIS_FLASH_DURATION = 800;
+
+function triggerTetrisFlash(gained) {
+    tetrisFlashTimer = TETRIS_FLASH_DURATION;
+    tetrisFlashScore = gained;
 }
 
 // 画面にスコアとレベルを反映
@@ -724,6 +751,36 @@ function draw() {
         ctx.restore();
     }
 
+    // テトリス達成時のフラッシュエフェクト
+    if (tetrisFlashTimer > 0) {
+        const progress = tetrisFlashTimer / TETRIS_FLASH_DURATION;
+        const alpha = progress * 0.4;
+        // シアン色のフラッシュ
+        ctx.fillStyle = `rgba(0, 220, 255, ${alpha})`;
+        ctx.fillRect(0, 0, COLS, ROWS);
+        // テキスト表示
+        ctx.save();
+        ctx.scale(1 / BLOCK_SIZE, 1 / BLOCK_SIZE);
+        ctx.textAlign = 'center';
+        // TETRIS! テキスト（スケールアニメーション）
+        const scale = 1 + (1 - progress) * 0.5;
+        const cx = (COLS * BLOCK_SIZE) / 2;
+        const cy = (ROWS * BLOCK_SIZE) / 2;
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale);
+        ctx.font = 'bold 52px sans-serif';
+        ctx.fillStyle = `rgba(0, 255, 255, ${progress})`;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${progress * 0.8})`;
+        ctx.lineWidth = 2;
+        ctx.strokeText('TETRIS!', 0, -10);
+        ctx.fillText('TETRIS!', 0, -10);
+        // +スコア
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillStyle = `rgba(255, 255, 255, ${progress})`;
+        ctx.fillText(`+${tetrisFlashScore}`, 0, 30);
+        ctx.restore();
+    }
+
     // ゴーストブロックを描画
     const ghostPos = getGhostPos();
     drawMatrix(currentPiece.matrix, ghostPos, ctx, true);
@@ -789,6 +846,12 @@ function update(time = 0) {
     if (bonusFlashTimer > 0) {
         bonusFlashTimer -= deltaTime;
         if (bonusFlashTimer <= 0) bonusFlashTimer = 0;
+    }
+
+    // テトリスフラッシュエフェクトのタイマー更新
+    if (tetrisFlashTimer > 0) {
+        tetrisFlashTimer -= deltaTime;
+        if (tetrisFlashTimer <= 0) tetrisFlashTimer = 0;
     }
 
     // 地面に接しているかチェック
