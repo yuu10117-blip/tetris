@@ -506,6 +506,9 @@ function dropPiece() {
     }
 }
 
+// 連続テトリスコンボカウンター
+let tetrisCombo = 0;
+
 // 行の消去判定とスコア計算（multiplier: ボーナスブロック時に10倍）
 function arenaSweep(multiplier = 1) {
     let rowCount = 0;
@@ -520,22 +523,36 @@ function arenaSweep(multiplier = 1) {
     }
 
     if (rowCount > 0) {
-        const gained = rowScore[rowCount] * level * multiplier;
         if (rowCount >= 4) {
-            // テトリス達成！4ライン以上消去
+            // テトリス達成！コンボ加算
+            tetrisCombo++;
+            const comboMultiplier = 1 + (tetrisCombo - 1) * 0.5; // 1倍, 1.5倍, 2倍, 2.5倍...
+            const gained = Math.floor(rowScore[rowCount] * level * multiplier * comboMultiplier);
             playSound('tetris');
-            triggerTetrisFlash(gained);
+            triggerTetrisFlash(gained, tetrisCombo);
+            if (multiplier > 1) {
+                playSound('bonus_clear');
+                triggerBonusFlash(gained);
+            }
+            score += gained;
+        } else {
+            // テトリス以外の消去 → コンボリセット
+            tetrisCombo = 0;
+            const gained = rowScore[rowCount] * level * multiplier;
+            if (multiplier > 1) {
+                playSound('bonus_clear');
+                triggerBonusFlash(gained);
+            } else {
+                playSound('clear');
+            }
+            score += gained;
         }
-        if (multiplier > 1) {
-            playSound('bonus_clear');
-            triggerBonusFlash(gained);
-        } else if (rowCount < 4) {
-            playSound('clear');
-        }
-        score += gained;
         level = Math.floor(score / 1000) + 1;
         dropInterval = Math.max(100, 1000 - (level - 1) * 100);
         updateScore();
+    } else {
+        // ライン消去なし → コンボリセット
+        tetrisCombo = 0;
     }
 }
 
@@ -552,11 +569,13 @@ function triggerBonusFlash(gained) {
 // テトリス達成時のフラッシュエフェクト
 let tetrisFlashTimer = 0;
 let tetrisFlashScore = 0;
+let tetrisFlashCombo = 0;
 const TETRIS_FLASH_DURATION = 800;
 
-function triggerTetrisFlash(gained) {
+function triggerTetrisFlash(gained, combo) {
     tetrisFlashTimer = TETRIS_FLASH_DURATION;
     tetrisFlashScore = gained;
+    tetrisFlashCombo = combo;
 }
 
 // 画面にスコアとレベルを反映
@@ -796,6 +815,12 @@ function draw() {
         ctx.font = 'bold 28px sans-serif';
         ctx.fillStyle = `rgba(255, 255, 255, ${progress})`;
         ctx.fillText(`+${tetrisFlashScore}`, 0, 30);
+        // コンボ表示（2コンボ以上で表示）
+        if (tetrisFlashCombo >= 2) {
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillStyle = `rgba(255, 200, 0, ${progress})`;
+            ctx.fillText(`COMBO ×${tetrisFlashCombo}!`, 0, 60);
+        }
         ctx.restore();
     }
 
