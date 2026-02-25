@@ -36,9 +36,10 @@
         <!-- 中央：ゲームボード -->
         <div class="board-wrapper" style="position: relative;">
             <canvas id="tetris-board" width="264" height="552"></canvas>
-            <div id="start-overlay" class="overlay">
-                <h2>TETRIS</h2>
-                <p class="start-subtitle">Modern Glass Edition</p>
+            <div id="start-overlay" class="overlay start-overlay">
+                <div class="start-guide-scroll">
+                    <img src="guide.png" alt="ゲームガイド" class="start-guide-img">
+                </div>
                 <button id="btn-start" class="btn-ctrl btn-start">START</button>
             </div>
             <div id="pause-overlay" class="overlay hidden">

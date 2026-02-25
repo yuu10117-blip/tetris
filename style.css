@@ -225,6 +225,32 @@ canvas {
     transform: scale(0.95);
 }
 
+/* スタート画面レイアウト */
+.start-overlay {
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.start-guide-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
+.start-guide-img {
+    width: 100%;
+    display: block;
+}
+
+.start-overlay>.btn-start {
+    flex-shrink: 0;
+    margin: 10px auto;
+}
+
 @keyframes pulse {
 
     0%,
