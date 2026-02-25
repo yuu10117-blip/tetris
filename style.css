@@ -198,6 +198,33 @@ canvas {
     margin: 0;
 }
 
+.start-subtitle {
+    color: var(--text-tertiary) !important;
+    font-size: 12px !important;
+    letter-spacing: 3px;
+    margin-bottom: 24px !important;
+}
+
+.btn-start {
+    padding: 14px 48px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    letter-spacing: 3px;
+    border-radius: 18px !important;
+    background: linear-gradient(145deg, rgba(96, 165, 250, 0.25), rgba(59, 130, 246, 0.12)) !important;
+    border: 1.5px solid rgba(96, 165, 250, 0.5) !important;
+    color: rgba(186, 230, 253, 0.95) !important;
+    box-shadow:
+        0 4px 20px rgba(96, 165, 250, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.btn-start:active {
+    background: linear-gradient(145deg, rgba(96, 165, 250, 0.4), rgba(59, 130, 246, 0.25)) !important;
+    transform: scale(0.95);
+}
+
 @keyframes pulse {
 
     0%,

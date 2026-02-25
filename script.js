@@ -280,6 +280,7 @@ let nextQueue = [];
 // ポーズとゲームオーバー状態
 let isPaused = false;
 let isGameOver = false;
+let isWaitingStart = true; // スタート待ち
 
 // ホールドシステム
 let holdPiece = null;
@@ -308,6 +309,18 @@ const MAX_HIGH_SCORES = 5;
 let lockFlashCells = []; // [{x, y, alpha}]
 let lockFlashTimer = 0;
 const LOCK_FLASH_DURATION = 200; // ミリ秒
+
+// --- バッテリー最適化: ダーティフラグとFPS制御 ---
+let needsRedraw = true; // 描画が必要な場合のみtrue
+const isMobile = window.matchMedia('(max-width: 800px)').matches;
+
+function markDirty() { needsRedraw = true; }
+
+// エフェクトがアクティブかどうか
+function hasActiveEffects() {
+    return lockFlashTimer > 0 || bonusFlashTimer > 0 || tetrisFlashTimer > 0 ||
+        specialFlashTimer > 0 || explosionFlashTimer > 0;
+}
 
 function loadHighScores() {
     const data = localStorage.getItem(HIGH_SCORES_KEY);
@@ -519,6 +532,7 @@ function holdCurrentPiece() {
     }
     lockDelayCounter = 0;
     dropCounter = 0;
+    markDirty();
 }
 
 // ホールドピースの描画
@@ -869,6 +883,7 @@ function movePiece(dir) {
         playSound('move');
         lockDelayCounter = 0;
         lastMoveWasRotation = false; // 移動したらT-Spin無効
+        markDirty();
     }
 }
 
@@ -905,6 +920,7 @@ function rotatePiece(dir) {
     playSound('rotate');
     lockDelayCounter = 0;
     lastMoveWasRotation = true; // T-Spin検出用: 最後の操作が回転
+    markDirty();
 }
 
 // 次の落下予測位置（ゴースト）を計算
@@ -1023,6 +1039,9 @@ function drawNextPiece(piece, canvasEl, ctxEl) {
 
 // 画面全体の描画更新
 function draw() {
+    if (isWaitingStart) return; // スタート待ちなら描画しない
+    if (!needsRedraw) return; // ダーティフラグが立っていなければスキップ
+    needsRedraw = false;
     // 背景クリア
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1137,35 +1156,38 @@ function draw() {
     // --- HOLDピースの描画 ---
     drawHoldPiece();
 
-    // --- PC用Nextブロックの描画（1つ目） ---
-    nextCtx.fillStyle = '#0f172a';
-    nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-    if (nextQueue.length > 0) {
-        const nw = nextQueue[0].matrix[0].length;
-        const nh = nextQueue[0].matrix.length;
-        const noff = {
-            x: (120 / BLOCK_SIZE - nw) / 2,
-            y: (120 / BLOCK_SIZE - nh) / 2
-        };
-        drawMatrix(nextQueue[0].matrix, noff, nextCtx, false, nextQueue[0].isBonus);
-    }
-
-    // --- モバイル用Nextブロックの描画（3つ） ---
-    for (let i = 0; i < 3; i++) {
-        if (nextQueue[i] && nextMobileCtxs[i]) {
-            drawNextPiece(nextQueue[i], nextMobileCanvases[i], nextMobileCtxs[i]);
+    if (isMobile) {
+        // モバイル: モバイル用Nextのみ描画（PC用キャンバスは非表示）
+        for (let i = 0; i < 3; i++) {
+            if (nextQueue[i] && nextMobileCtxs[i]) {
+                drawNextPiece(nextQueue[i], nextMobileCanvases[i], nextMobileCtxs[i]);
+            }
+        }
+    } else {
+        // PC: PC用Nextのみ描画
+        nextCtx.fillStyle = '#0f172a';
+        nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+        if (nextQueue.length > 0) {
+            const nw = nextQueue[0].matrix[0].length;
+            const nh = nextQueue[0].matrix.length;
+            const noff = {
+                x: (120 / BLOCK_SIZE - nw) / 2,
+                y: (120 / BLOCK_SIZE - nh) / 2
+            };
+            drawMatrix(nextQueue[0].matrix, noff, nextCtx, false, nextQueue[0].isBonus);
         }
     }
 }
 
 // ゲームループ
-const TARGET_FPS = 20; // 20fpsに制限（バッテリー節約、テトリスには十分）
+const TARGET_FPS = 20; // エフェクト時は20fps
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
+const FRAME_INTERVAL_LOW = 1000 / 12; // 通常時は12fps（バッテリー節約）
 let animFrameId = null;
 
 function update(time = 0) {
-    if (isPaused || isGameOver) {
-        // ポーズ/ゲームオーバー中は描画を停止（バッテリー節約）
+    if (isWaitingStart || isPaused || isGameOver) {
+        // スタート待ち/ポーズ/ゲームオーバー中はループ停止（バッテリー節約）
         lastTime = 0;
         animFrameId = null;
         return;
@@ -1179,7 +1201,9 @@ function update(time = 0) {
         return;
     }
     const deltaTime = time - lastTime;
-    if (deltaTime < FRAME_INTERVAL) return;
+    // エフェクトアクティブ時は20fps、通常時は12fpsに制限（バッテリー節約）
+    const currentFrameInterval = hasActiveEffects() ? FRAME_INTERVAL : FRAME_INTERVAL_LOW;
+    if (deltaTime < currentFrameInterval) return;
     lastTime = time;
 
     // 固定エフェクトのタイマー更新
@@ -1233,12 +1257,14 @@ function update(time = 0) {
         }
     }
 
+    // エフェクト中またはロジック更新があったので描画が必要
+    markDirty();
     draw();
 }
 
 // ゲームループを再開する関数（ポーズ解除・リスタート時に使用）
 function resumeGameLoop() {
-    if (!animFrameId && !isPaused && !isGameOver) {
+    if (!animFrameId && !isPaused && !isGameOver && !isWaitingStart) {
         lastTime = 0;
         animFrameId = requestAnimationFrame(update);
     }
@@ -1268,6 +1294,7 @@ function restartGame() {
     updateScore();
     dropInterval = 1000;
     isGameOver = false;
+    isWaitingStart = false;
     lockFlashCells = [];
     lockFlashTimer = 0;
     // 新機能のリセット
@@ -1292,6 +1319,15 @@ function restartGame() {
 
 // キーボード操作の受付
 document.addEventListener('keydown', event => {
+    // スタート待ち中はSpaceまたは任意のキーでスタート
+    if (isWaitingStart) {
+        if (event.keyCode === 32) {
+            event.preventDefault();
+            startGame();
+        }
+        return;
+    }
+
     if ([32, 37, 38, 39, 40, 72, 80].includes(event.keyCode)) {
         event.preventDefault();
     }
@@ -1464,8 +1500,29 @@ if (btnRetry) {
     });
 }
 
-// ゲーム開始
-fillNextQueue();
-currentPiece = popNextPiece();
-updateScore();
-update();
+// --- STARTボタンのイベント登録 ---
+const btnStart = document.getElementById('btn-start');
+if (btnStart) {
+    btnStart.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+    btnStart.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        startGame();
+    });
+}
+
+// ゲーム開始関数
+function startGame() {
+    if (!isWaitingStart) return;
+    isWaitingStart = false;
+    document.getElementById('start-overlay').classList.add('hidden');
+    fillNextQueue();
+    currentPiece = popNextPiece();
+    updateScore();
+    markDirty();
+    resumeGameLoop();
+}
+
+// --- ゲーム初期化（スタート待ち状態） ---
+// スタートボタンが押されるまでループは開始しない
+ctx.fillStyle = '#0f172a';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
